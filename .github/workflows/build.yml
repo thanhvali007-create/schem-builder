@@ -1,0 +1,62 @@
+name: Build Fabric Mod
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Auto-resolve exact Fabric versions for Minecraft 1.21.11
+        run: |
+          MC_VER=$(grep '^minecraft_version=' gradle.properties | cut -d'=' -f2 | tr -d '[:space:]')
+          echo "Resolving Fabric metadata for Minecraft $MC_VER..."
+
+          YARN_VER=$(curl -s "https://meta.fabricmc.net/v2/versions/yarn/${MC_VER}" | jq -r '.[0].version // empty')
+          LOADER_VER=$(curl -s "https://meta.fabricmc.net/v2/versions/loader" | jq -r '.[0].version // empty')
+          FAPI_VER=$(curl -s -G "https://api.modrinth.com/v2/project/P7dR8mSH/version" \
+            --data-urlencode "game_versions=[\"${MC_VER}\"]" \
+            --data-urlencode "loaders=[\"fabric\"]" | jq -r '.[0].version_number // empty')
+
+          if [ -n "$YARN_VER" ]; then
+            sed -i "s|^yarn_mappings=.*|yarn_mappings=${YARN_VER}|" gradle.properties
+            echo "Resolved yarn_mappings=${YARN_VER}"
+          fi
+          if [ -n "$LOADER_VER" ]; then
+            sed -i "s|^loader_version=.*|loader_version=${LOADER_VER}|" gradle.properties
+            echo "Resolved loader_version=${LOADER_VER}"
+          fi
+          if [ -n "$FAPI_VER" ]; then
+            sed -i "s|^fabric_version=.*|fabric_version=${FAPI_VER}|" gradle.properties
+            echo "Resolved fabric_version=${FAPI_VER}"
+          fi
+          cat gradle.properties
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.12'
+
+      - name: Build Mod JAR
+        run: gradle build --no-daemon
+
+      - name: Upload Built JAR Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: schem-builder-jar
+          path: |
+            build/libs/*.jar
+            !build/libs/*-sources.jar
+            !build/libs/*-dev.jar
