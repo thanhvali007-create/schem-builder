@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "schembuilder",
+  "version": "${version}",
+  "name": "SchemBuilder Client",
+  "description": "Mod client độc lập tự động xây công trình từ file .litematic, .schem, .nbt",
+  "authors": [
+    "HuynhThi"
+  ],
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.example.schembuilder.SchemBuilderClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
